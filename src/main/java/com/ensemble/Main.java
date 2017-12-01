@@ -5,8 +5,13 @@ import com.ensemble.models.TOC;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.internal.LinkedTreeMap;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import sun.plugin.javascript.navig4.Link;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import java.util.*;
 
 public class Main {
@@ -70,7 +75,19 @@ public class Main {
 
 
     public static void main(String[] args) {
-        HashMap<String, String> TOC = new HashMap<String,String>();
+
+        DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder docBuilder = null;
+        try {
+            docBuilder = docFactory.newDocumentBuilder();
+        } catch (ParserConfigurationException e) {
+            e.printStackTrace();
+        }
+
+        // root elements
+        Document doc = docBuilder.newDocument();
+        Element rootElement = doc.createElement("DDX");
+        doc.appendChild(rootElement);
 
         Gson gson = new GsonBuilder().create();
         LinkedTreeMap TOCMap = (LinkedTreeMap) gson.fromJson(tocStr, Object.class);
@@ -81,39 +98,45 @@ public class Main {
 
             ArrayList files = (ArrayList) TOCMap.get("files");
 
-            lhm = createDDXMap(files,lhm);
+            doc = createDDXMap(files,doc);
+            String test = "test";
         }
 
     }
 
 
-    private static LinkedHashMap createDDXMap(ArrayList files, LinkedHashMap lhm) {
+    private static Document createDDXMap(ArrayList files, Document doc) {
 
         for (int i = 0; i < files.size();i++){
             LinkedTreeMap fileTreeMap = (LinkedTreeMap) files.get(i);
-            lhm.put(fileTreeMap.get("title"),processFile(fileTreeMap ,lhm));
+            Document doc1 = processFile(fileTreeMap,doc);
+            doc.appendChild(doc1);
+//            lhm.put(fileTreeMap.get("title"),processFile(fileTreeMap ,lhm));
         }
 
-        return lhm;
+        return doc;
     }
 
-    private static LinkedHashMap processFile(LinkedTreeMap file, LinkedHashMap lhm) {
+    private static Document processFile(LinkedTreeMap file, Document doc) {
         System.out.println("title = " + file.get("title"));
+        if (file.containsKey("title")) {
+            String title = (String) file.get("title");
 
-        if(file.containsKey("details")){
-            LinkedTreeMap details = (LinkedTreeMap) file.get("details");
+            if (file.containsKey("details")) {
+                Element ele = doc.createElement("PDF");
+                ele.setAttribute("source", title);
 
-            if(details.containsKey("files")){
-                ArrayList nextFile = (ArrayList) details.get("files");
+                LinkedTreeMap details = (LinkedTreeMap) file.get("details");
 
-                createDDXMap(nextFile,lhm);
-            }
-            else {
-                return lhm;
+                if (details.containsKey("files")) {
+                    ArrayList nextFile = (ArrayList) details.get("files");
+
+                    createDDXMap(nextFile, doc);
+                }
             }
         }
 
-        return new LinkedHashMap();
+        return doc;
     }
 
 
