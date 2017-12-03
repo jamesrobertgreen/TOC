@@ -12,6 +12,13 @@ import sun.plugin.javascript.navig4.Link;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import java.io.*;
 import java.util.*;
 
 public class Main {
@@ -74,7 +81,7 @@ public class Main {
 
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException, TransformerException {
 
         DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder docBuilder = null;
@@ -98,45 +105,63 @@ public class Main {
 
             ArrayList files = (ArrayList) TOCMap.get("files");
 
-            doc = createDDXMap(files,doc);
+            Element root = createDDXMap("root",files,doc,rootElement);
             String test = "test";
+           // doc.appendChild(root);
+
+            printDocument(rootElement);
         }
 
     }
 
+    public static void printDocument(Element doc) throws IOException, TransformerException {
+        TransformerFactory transFactory = TransformerFactory.newInstance();
+        Transformer transformer = transFactory.newTransformer();
+        StringWriter buffer = new StringWriter();
+        transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+        transformer.transform(new DOMSource(doc),
+                new StreamResult(buffer));
+        String str = buffer.toString();
+        System.out.println(str);
+    }
 
-    private static Document createDDXMap(ArrayList files, Document doc) {
+    private static Element createDDXMap(String name, ArrayList files, Document doc, Element rootElement) {
+        Element ele = doc.createElement("PDF");
+        ele.setAttribute("result",name);
 
         for (int i = 0; i < files.size();i++){
             LinkedTreeMap fileTreeMap = (LinkedTreeMap) files.get(i);
-            Document doc1 = processFile(fileTreeMap,doc);
-            doc.appendChild(doc1);
+            Element el1 = processFile(fileTreeMap,doc,rootElement);
+            rootElement.appendChild(el1);
+
 //            lhm.put(fileTreeMap.get("title"),processFile(fileTreeMap ,lhm));
         }
 
-        return doc;
+        return ele;
     }
 
-    private static Document processFile(LinkedTreeMap file, Document doc) {
+    private static Element processFile(LinkedTreeMap file, Document doc, Element rootElement) {
+        Element ele = doc.createElement("PDF");
         System.out.println("title = " + file.get("title"));
         if (file.containsKey("title")) {
             String title = (String) file.get("title");
 
             if (file.containsKey("details")) {
-                Element ele = doc.createElement("PDF");
+
                 ele.setAttribute("source", title);
 
                 LinkedTreeMap details = (LinkedTreeMap) file.get("details");
 
                 if (details.containsKey("files")) {
                     ArrayList nextFile = (ArrayList) details.get("files");
+                    Element el2 = createDDXMap(title,nextFile, doc, rootElement);
 
-                    createDDXMap(nextFile, doc);
+                    ele.appendChild(el2);
                 }
             }
         }
 
-        return doc;
+        return ele;
     }
 
 
